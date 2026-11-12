@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:unit
+      - name: Integration tests (Linux, headless)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a npm test
+      - name: Integration tests
+        if: runner.os != 'Linux'
+        run: npm test
+      - name: Package
+        if: runner.os == 'Linux'
+        run: npx vsce package --out usage-lens.vsix
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux'
+        with:
+          name: vsix
+          path: usage-lens.vsix

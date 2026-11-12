@@ -1,0 +1,351 @@
+{
+  "name": "usage-lens",
+  "displayName": "Usage Lens",
+  "description": "Clickable 'N in file | M in project' usage counts above every class, function and method. Spot dead code and assess change impact at a glance.",
+  "version": "0.1.0",
+  "publisher": "TODO-publisher",
+  "license": "MIT",
+  "author": {
+    "name": "Robert Wabuti"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/TODO-owner/usage-lens.git"
+  },
+  "bugs": {
+    "url": "https://github.com/TODO-owner/usage-lens/issues"
+  },
+  "homepage": "https://github.com/TODO-owner/usage-lens#readme",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e2e",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "codelens",
+    "references",
+    "usages",
+    "dead code",
+    "unused",
+    "find references",
+    "python",
+    "django",
+    "typescript"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": {
+      "supported": "limited",
+      "description": "Text mode needs file-system access to scan the workspace."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "usageLens.toggle",
+        "title": "Toggle On/Off",
+        "category": "Usage Lens"
+      },
+      {
+        "command": "usageLens.refresh",
+        "title": "Refresh Counts",
+        "category": "Usage Lens",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "usageLens.switchMode",
+        "title": "Switch Counting Mode",
+        "category": "Usage Lens"
+      },
+      {
+        "command": "usageLens.manageExclusions",
+        "title": "Manage Exclusions",
+        "category": "Usage Lens"
+      },
+      {
+        "command": "usageLens.addExclusion",
+        "title": "Add Exclusion Pattern",
+        "category": "Usage Lens"
+      },
+      {
+        "command": "usageLens.excludeResource",
+        "title": "Exclude from Usage Counts",
+        "category": "Usage Lens"
+      },
+      {
+        "command": "usageLens.includeResource",
+        "title": "Include in Usage Counts",
+        "category": "Usage Lens"
+      },
+      {
+        "command": "usageLens.showUsages",
+        "title": "Show Usages",
+        "category": "Usage Lens"
+      },
+      {
+        "command": "usageLens.switchScope",
+        "title": "Switch File/Project",
+        "category": "Usage Lens",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "usageLens.refreshUsages",
+        "title": "Refresh Usages",
+        "category": "Usage Lens",
+        "icon": "$(refresh)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "usageLens",
+          "title": "Usage Lens",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "usageLens": [
+        {
+          "id": "usageLens.usages",
+          "name": "Usages"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "usageLens.usages",
+        "contents": "Click a usage count above any class, function or method to list its usages here.\n[Manage Exclusions](command:usageLens.manageExclusions)\n[Switch Counting Mode](command:usageLens.switchMode)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "usageLens.showUsages",
+          "when": "false"
+        },
+        {
+          "command": "usageLens.excludeResource",
+          "when": "false"
+        },
+        {
+          "command": "usageLens.includeResource",
+          "when": "false"
+        },
+        {
+          "command": "usageLens.switchScope",
+          "when": "usageLens.hasResult"
+        },
+        {
+          "command": "usageLens.refreshUsages",
+          "when": "usageLens.hasResult"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "usageLens.excludeResource",
+          "group": "7_modification@9",
+          "when": "workspaceFolderCount > 0"
+        },
+        {
+          "command": "usageLens.includeResource",
+          "group": "7_modification@10",
+          "when": "workspaceFolderCount > 0"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "usageLens.switchScope",
+          "when": "view == usageLens.usages && usageLens.hasResult",
+          "group": "navigation@1"
+        },
+        {
+          "command": "usageLens.refreshUsages",
+          "when": "view == usageLens.usages && usageLens.hasResult",
+          "group": "navigation@2"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Usage Lens",
+      "properties": {
+        "usageLens.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Show usage counts above symbols."
+        },
+        "usageLens.mode": {
+          "type": "string",
+          "enum": [
+            "languageServer",
+            "text"
+          ],
+          "enumDescriptions": [
+            "Accurate, type-aware counts from the language server's Find All References.",
+            "Whole-word text matches across included files. Catches dynamic usage (templates, getattr) but may over-count same-named symbols."
+          ],
+          "default": "languageServer",
+          "markdownDescription": "How usages are counted."
+        },
+        "usageLens.exclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "node_modules",
+            "bower_components",
+            "venv",
+            ".venv",
+            "env",
+            "virtualenv",
+            "site-packages",
+            "dist-packages",
+            "__pycache__",
+            ".git",
+            ".tox",
+            ".nox",
+            ".mypy_cache",
+            ".pytest_cache",
+            "dist",
+            "build",
+            "out",
+            "target",
+            "vendor",
+            "coverage",
+            "*.min.js"
+          ],
+          "scope": "resource",
+          "markdownDescription": "Gitignore-style patterns, relative to each workspace folder. `venv` matches at any depth; `/scripts/legacy` or `src/vendor` is anchored to the folder root. Excluding a folder excludes everything inside it. Excluded files get no lenses and their usages are not counted."
+        },
+        "usageLens.useEditorExcludes": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Also apply `#files.exclude#` and `#search.exclude#`."
+        },
+        "usageLens.symbolKinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "class",
+              "function",
+              "method",
+              "interface",
+              "struct",
+              "constructor",
+              "enum",
+              "property",
+              "variable",
+              "constant",
+              "module"
+            ]
+          },
+          "default": [
+            "class",
+            "function",
+            "method",
+            "interface",
+            "struct"
+          ],
+          "markdownDescription": "Symbol kinds that get usage lenses."
+        },
+        "usageLens.ignoreNames": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "^__\\w+__$"
+          ],
+          "markdownDescription": "Regular expressions. Symbols whose name matches any of them get no lens. The default hides Python dunder methods."
+        },
+        "usageLens.fileLabel": {
+          "type": "string",
+          "default": "{count} in file",
+          "markdownDescription": "Label for the in-file count. `{count}` is replaced with the number."
+        },
+        "usageLens.projectLabel": {
+          "type": "string",
+          "default": "{count} in project",
+          "markdownDescription": "Label for the project count (includes in-file usages). `{count}` is replaced with the number."
+        },
+        "usageLens.textMode.include": {
+          "type": "string",
+          "default": "**/*.{py,pyi,ts,tsx,js,jsx,mjs,cjs,go,java,kt,cs,php,rb,rs,c,h,cpp,hpp,swift,scala,vue,svelte,html,htm,jinja,jinja2,j2,djhtml,txt,yml,yaml,json,toml}",
+          "markdownDescription": "Glob of files scanned in text mode."
+        },
+        "usageLens.textMode.maxFiles": {
+          "type": "number",
+          "default": 10000,
+          "minimum": 1,
+          "markdownDescription": "Maximum number of files scanned in text mode."
+        },
+        "usageLens.textMode.maxFileSizeKB": {
+          "type": "number",
+          "default": 1024,
+          "minimum": 1,
+          "markdownDescription": "Files larger than this are skipped in text mode."
+        },
+        "usageLens.maxConcurrentRequests": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 32,
+          "markdownDescription": "Maximum concurrent reference requests sent to the language server."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "package": "node esbuild.mjs --production",
+    "vscode:prepublish": "npm run package",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test",
+    "test:unit": "mocha --require tsx 'test/unit/**/*.test.ts'",
+    "pretest": "tsc -p tsconfig.test.json && npm run compile",
+    "test": "vscode-test",
+    "vsix": "vsce package",
+    "publish:vsce": "vsce publish",
+    "publish:ovsx": "ovsx publish"
+  },
+  "dependencies": {
+    "picomatch": "^4.0.7"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.19.43",
+    "@types/picomatch": "^4.0.3",
+    "@types/vscode": "~1.85.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.1.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^9.39.5",
+    "mocha": "^12.0.3",
+    "ovsx": "^1.4.0",
+    "tsx": "^4.23.15",
+    "typescript": "~5.6",
+    "typescript-eslint": "^8.72.2"
+  }
+}
