@@ -101,7 +101,7 @@ Excluding a folder excludes everything inside it. Excluded files get no lenses, 
 
 ## Contributing
 
-Issues and pull requests are welcome. To work on the extension:
+Issues and pull requests are welcome. See [DEVELOPMENT.md](DEVELOPMENT.md) for the full local setup. In short:
 
 ```bash
 npm install
