@@ -10,12 +10,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/TODO-owner/usage-lens.git"
+    "url": "https://github.com/RobertoPotato/vscode-usage-lens"
   },
   "bugs": {
-    "url": "https://github.com/TODO-owner/usage-lens/issues"
+    "url": "https://github.com/RobertoPotato/vscode-usage-lens/issues"
   },
-  "homepage": "https://github.com/TODO-owner/usage-lens#readme",
+  "homepage": "https://github.com/RobertoPotato/vscode-usage-lens#readme",
   "icon": "media/icon.png",
   "galleryBanner": {
     "color": "#1e1e2e",
