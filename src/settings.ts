@@ -29,12 +29,17 @@ export interface Settings {
   textMaxFiles: number;
   textMaxFileSizeKB: number;
   maxConcurrentRequests: number;
+  leaderboardInclude: string;
+  leaderboardMaxFiles: number;
 }
 
 interface FolderExclusions {
   matcher: ExclusionMatcher;
   excludeGlob: string | undefined;
 }
+
+export const DEFAULT_LEADERBOARD_INCLUDE =
+  '**/*.{py,pyi,ts,tsx,js,jsx,mjs,cjs,go,java,kt,cs,php,rb,rs,c,h,cpp,hpp,swift,scala}';
 
 const NOCASE = process.platform === 'win32' || process.platform === 'darwin';
 
@@ -80,6 +85,8 @@ export class SettingsStore {
       textMaxFiles: Math.max(1, c.get<number>('textMode.maxFiles', 10000)),
       textMaxFileSizeKB: Math.max(1, c.get<number>('textMode.maxFileSizeKB', 1024)),
       maxConcurrentRequests: Math.min(32, Math.max(1, c.get<number>('maxConcurrentRequests', 4))),
+      leaderboardInclude: c.get<string>('leaderboard.include', DEFAULT_LEADERBOARD_INCLUDE),
+      leaderboardMaxFiles: Math.max(1, c.get<number>('leaderboard.maxFiles', 2000)),
     };
     this.folderCache.clear();
   }
@@ -88,15 +95,9 @@ export class SettingsStore {
   patternsFor(folder: vscode.WorkspaceFolder): string[] {
     const c = vscode.workspace.getConfiguration('usageLens', folder.uri);
     const patterns = [...c.get<string[]>('exclude', [])];
-    if (c.get<boolean>('useEditorExcludes', true)) {
-      for (const section of ['files.exclude', 'search.exclude']) {
-        const obj = vscode.workspace.getConfiguration(undefined, folder.uri).get<Record<string, unknown>>(section) ?? {};
-        for (const [glob, on] of Object.entries(obj)) {
-          if (on === true) {
-            patterns.push(glob);
-          }
-        }
-      }
+    const editor = editorExcludesFor(folder);
+    if (editor) {
+      patterns.push(...editor['files.exclude'], ...editor['search.exclude']);
     }
     return patterns;
   }
@@ -129,6 +130,22 @@ export class SettingsStore {
   isIgnoredName(name: string): boolean {
     return this._settings.ignoreNames.some((r) => r.test(name));
   }
+}
+
+export type EditorExcludeSection = 'files.exclude' | 'search.exclude';
+
+/** Enabled patterns from files.exclude / search.exclude, or undefined when useEditorExcludes is off. */
+export function editorExcludesFor(folder: vscode.WorkspaceFolder): Record<EditorExcludeSection, string[]> | undefined {
+  if (!vscode.workspace.getConfiguration('usageLens', folder.uri).get<boolean>('useEditorExcludes', true)) {
+    return undefined;
+  }
+  const read = (section: EditorExcludeSection) => {
+    const obj = vscode.workspace.getConfiguration(undefined, folder.uri).get<Record<string, unknown>>(section) ?? {};
+    return Object.entries(obj)
+      .filter(([, on]) => on === true)
+      .map(([glob]) => glob);
+  };
+  return { 'files.exclude': read('files.exclude'), 'search.exclude': read('search.exclude') };
 }
 
 export function relativeTo(folder: vscode.WorkspaceFolder, uri: vscode.Uri): string {

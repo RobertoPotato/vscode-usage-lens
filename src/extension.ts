@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
 import { UsageCodeLensProvider } from './codeLensProvider';
 import { registerExclusionCommands } from './exclusionCommands';
-import { SettingsStore } from './settings';
+import { ExclusionsTreeProvider } from './exclusionsTree';
+import { LeaderboardService } from './leaderboard';
+import { LEADERBOARD_VIEW, LeaderboardViewProvider } from './leaderboardView';
+import { CountingMode, SettingsStore } from './settings';
 import { TextIndex } from './textIndex';
 import { Scope, UsageResult, UsageService } from './usageService';
 import { UsagesTreeProvider } from './usagesTree';
@@ -12,6 +15,7 @@ export interface UsageLensApi {
   /** Exposed for integration tests. */
   usages: UsageService;
   settings: SettingsStore;
+  leaderboard: LeaderboardService;
 }
 
 export function activate(context: vscode.ExtensionContext): UsageLensApi {
@@ -22,14 +26,18 @@ export function activate(context: vscode.ExtensionContext): UsageLensApi {
   const tree = new UsagesTreeProvider();
   const view = vscode.window.createTreeView('usageLens.usages', { treeDataProvider: tree, showCollapseAll: true });
   tree.attach(view);
+  const leaderboard = new LeaderboardService(settings, usages);
+  const leaderboardView = new LeaderboardViewProvider(context.extensionUri, leaderboard, settings);
+  const exclusionsTree = new ExclusionsTreeProvider();
+  const exclusionsView = vscode.window.createTreeView('usageLens.exclusions', { treeDataProvider: exclusionsTree });
 
   const status = vscode.window.createStatusBarItem('usageLens.mode', vscode.StatusBarAlignment.Right, 100);
   status.name = 'Usage Lens Mode';
-  status.command = 'usageLens.switchMode';
+  status.command = 'usageLens.toggleMode';
   const updateStatus = () => {
     const s = settings.current;
     status.text = s.enabled ? `$(references) ${s.mode === 'text' ? 'Text' : 'LS'}` : '$(references) off';
-    status.tooltip = `Usage Lens: ${s.enabled ? (s.mode === 'text' ? 'text' : 'language server') + ' mode' : 'disabled'} — click to switch mode`;
+    status.tooltip = `Usage Lens: ${s.enabled ? (s.mode === 'text' ? 'text' : 'language server') + ' mode' : 'disabled'} — click to toggle the counting mode`;
     status.show();
   };
   updateStatus();
@@ -54,6 +62,7 @@ export function activate(context: vscode.ExtensionContext): UsageLensApi {
       editTimer = undefined;
       usages.clear();
       lenses.refresh();
+      leaderboard.markStale();
     };
     if (immediate) {
       fire();
@@ -67,6 +76,7 @@ export function activate(context: vscode.ExtensionContext): UsageLensApi {
     textIndex.invalidateFileList();
     textIndex.invalidateFile(uri);
     usages.clear();
+    leaderboard.markStale();
   };
 
   const config = vscode.workspace.getConfiguration('usageLens');
@@ -77,9 +87,16 @@ export function activate(context: vscode.ExtensionContext): UsageLensApi {
     return config.update(key, value, target);
   };
 
+  const setMode = (mode: CountingMode) => (settings.current.mode === mode ? undefined : setConfig('mode', mode));
+
   context.subscriptions.push(
     view,
     tree,
+    leaderboard,
+    leaderboardView,
+    exclusionsTree,
+    exclusionsView,
+    vscode.window.registerWebviewViewProvider(LEADERBOARD_VIEW, leaderboardView),
     lenses,
     status,
     watcher,
@@ -110,10 +127,13 @@ export function activate(context: vscode.ExtensionContext): UsageLensApi {
         usages.onSettingsChanged();
         updateStatus();
         refreshAll();
+        exclusionsTree.refresh();
+        leaderboard.markStale();
       }
     }),
 
     vscode.commands.registerCommand('usageLens.toggle', () => setConfig('enabled', !settings.current.enabled)),
+    vscode.commands.registerCommand('usageLens.showLenses', () => setConfig('enabled', !settings.current.enabled)),
     vscode.commands.registerCommand('usageLens.refresh', () => {
       settings.reload();
       refreshAll();
@@ -141,6 +161,19 @@ export function activate(context: vscode.ExtensionContext): UsageLensApi {
         await setConfig('mode', pick.id);
       }
     }),
+    vscode.commands.registerCommand('usageLens.useTextMode', () => setMode('text')),
+    vscode.commands.registerCommand('usageLens.useLanguageServerMode', () => setMode('languageServer')),
+    vscode.commands.registerCommand('usageLens.toggleMode', () =>
+      setMode(settings.current.mode === 'text' ? 'languageServer' : 'text'),
+    ),
+    vscode.commands.registerCommand('usageLens.leaderboard.scan', async () => {
+      await vscode.commands.executeCommand(`${LEADERBOARD_VIEW}.focus`);
+      return leaderboardView.scan();
+    }),
+    vscode.commands.registerCommand('usageLens.leaderboard.stop', () => leaderboard.stop()),
+    vscode.commands.registerCommand('usageLens.openExclusionSettings', () =>
+      vscode.commands.executeCommand('workbench.action.openSettings', 'usageLens.exclude'),
+    ),
     vscode.commands.registerCommand('usageLens.showUsages', (result: UsageResult, scope: Scope) => {
       if (result) {
         tree.show(result, scope ?? 'project');
@@ -167,7 +200,7 @@ export function activate(context: vscode.ExtensionContext): UsageLensApi {
     ...registerExclusionCommands(settings),
   );
 
-  return { usages, settings };
+  return { usages, settings, leaderboard };
 }
 
 function isWorkspaceDoc(doc: vscode.TextDocument): boolean {

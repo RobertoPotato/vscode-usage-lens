@@ -2,6 +2,8 @@
 !dist/extension.js
 !media/icon.png
 !media/activity.svg
+!media/leaderboard.js
+!media/leaderboard.css
 !package.json
 !README.md
 !CHANGELOG.md

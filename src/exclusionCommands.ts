@@ -6,18 +6,18 @@ const SECTION = 'usageLens';
 const KEY = 'exclude';
 
 /** The exclusion list as it currently applies to a folder (folder > workspace > default). */
-function currentList(folder: vscode.WorkspaceFolder): string[] {
+export function currentList(folder: vscode.WorkspaceFolder): string[] {
   const info = vscode.workspace.getConfiguration(SECTION, folder.uri).inspect<string[]>(KEY);
   return [...(info?.workspaceFolderValue ?? info?.workspaceValue ?? info?.defaultValue ?? [])];
 }
 
-async function writeList(folder: vscode.WorkspaceFolder, list: string[]): Promise<void> {
+export async function writeList(folder: vscode.WorkspaceFolder, list: string[]): Promise<void> {
   await vscode.workspace
     .getConfiguration(SECTION, folder.uri)
     .update(KEY, list, vscode.ConfigurationTarget.WorkspaceFolder);
 }
 
-async function pickFolder(): Promise<vscode.WorkspaceFolder | undefined> {
+export async function pickFolder(): Promise<vscode.WorkspaceFolder | undefined> {
   const folders = vscode.workspace.workspaceFolders ?? [];
   if (folders.length === 0) {
     void vscode.window.showWarningMessage('Usage Lens: open a folder to manage exclusions.');
@@ -107,7 +107,9 @@ export function registerExclusionCommands(settings: SettingsStore): vscode.Dispo
       }
     }),
 
-    vscode.commands.registerCommand('usageLens.addExclusion', async (target?: vscode.WorkspaceFolder) => {
+    vscode.commands.registerCommand('usageLens.addExclusion', async (arg?: vscode.WorkspaceFolder | { folder: vscode.WorkspaceFolder }) => {
+      // Called with a folder (Manage Exclusions), an Exclusions tree node, or nothing (palette).
+      const target = arg && 'folder' in arg ? arg.folder : arg;
       const folder = target && 'uri' in target && 'index' in target ? target : await pickFolder();
       if (!folder) {
         return;
@@ -127,6 +129,32 @@ export function registerExclusionCommands(settings: SettingsStore): vscode.Dispo
         await writeList(folder, list);
       }
     }),
+
+    vscode.commands.registerCommand(
+      'usageLens.removeExclusion',
+      async (node?: { folder: vscode.WorkspaceFolder; pattern: string }) => {
+        let folder = node?.folder;
+        let pattern = node?.pattern;
+        if (!folder || pattern === undefined) {
+          folder = await pickFolder();
+          if (!folder) {
+            return;
+          }
+          const pick = await vscode.window.showQuickPick(currentList(folder), {
+            title: 'Usage Lens: Remove exclusion pattern',
+          });
+          if (!pick) {
+            return;
+          }
+          pattern = pick;
+        }
+        const list = currentList(folder);
+        const next = list.filter((p) => p !== pattern);
+        if (next.length !== list.length) {
+          await writeList(folder, next);
+        }
+      },
+    ),
 
     vscode.commands.registerCommand('usageLens.manageExclusions', async () => {
       const folder = await pickFolder();

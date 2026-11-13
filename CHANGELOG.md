@@ -4,6 +4,16 @@ All notable changes to this extension are documented here. The format follows [K
 
 ## [Unreleased]
 
+### Added
+- **Symbol Leaderboard** sidebar view that ranks every class, function and method by usage, with Class / Function / Method / Object filters, live search, a most-used/least-used toggle, and Rescan / Stop.
+- **Exclusions** sidebar view listing the patterns for each folder (Usage Lens patterns, plus read-only `files.exclude` / `search.exclude`), with add and remove actions.
+- Sidebar **⋯** options menu with a counting-mode checkmark toggle, Show Lenses, Refresh Counts and Manage Exclusions.
+- Commands: Toggle Counting Mode, Rescan Leaderboard, Remove Exclusion Pattern.
+- Settings: `usageLens.leaderboard.include`, `usageLens.leaderboard.maxFiles`.
+
+### Changed
+- Clicking the status bar item now toggles the counting mode directly instead of opening a picker.
+
 ## [0.1.0]
 
 ### Added
