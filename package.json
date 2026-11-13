@@ -3,7 +3,7 @@
   "displayName": "Usage Lens",
   "description": "Clickable 'N in file | M in project' usage counts above every class, function and method. Spot dead code and assess change impact at a glance.",
   "version": "0.1.0",
-  "publisher": "TODO-publisher",
+  "publisher": "Tenscapes",
   "license": "MIT",
   "author": {
     "name": "Robert Wabuti"
@@ -82,7 +82,8 @@
       {
         "command": "usageLens.addExclusion",
         "title": "Add Exclusion Pattern",
-        "category": "Usage Lens"
+        "category": "Usage Lens",
+        "icon": "$(add)"
       },
       {
         "command": "usageLens.excludeResource",
@@ -110,6 +111,50 @@
         "title": "Refresh Usages",
         "category": "Usage Lens",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "usageLens.useLanguageServerMode",
+        "title": "Count with Language Server",
+        "category": "Usage Lens"
+      },
+      {
+        "command": "usageLens.useTextMode",
+        "title": "Count by Text Match",
+        "category": "Usage Lens"
+      },
+      {
+        "command": "usageLens.toggleMode",
+        "title": "Toggle Counting Mode",
+        "category": "Usage Lens"
+      },
+      {
+        "command": "usageLens.leaderboard.scan",
+        "title": "Rescan Leaderboard",
+        "category": "Usage Lens",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "usageLens.leaderboard.stop",
+        "title": "Stop Leaderboard Scan",
+        "category": "Usage Lens",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "usageLens.removeExclusion",
+        "title": "Remove Exclusion Pattern",
+        "category": "Usage Lens",
+        "icon": "$(close)"
+      },
+      {
+        "command": "usageLens.openExclusionSettings",
+        "title": "Open Exclusion Settings",
+        "category": "Usage Lens",
+        "icon": "$(gear)"
+      },
+      {
+        "command": "usageLens.showLenses",
+        "title": "Show Lenses",
+        "category": "Usage Lens"
       }
     ],
     "viewsContainers": {
@@ -124,15 +169,28 @@
     "views": {
       "usageLens": [
         {
+          "type": "webview",
+          "id": "usageLens.leaderboard",
+          "name": "Leaderboard"
+        },
+        {
           "id": "usageLens.usages",
           "name": "Usages"
+        },
+        {
+          "id": "usageLens.exclusions",
+          "name": "Exclusions"
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "usageLens.usages",
-        "contents": "Click a usage count above any class, function or method to list its usages here.\n[Manage Exclusions](command:usageLens.manageExclusions)\n[Switch Counting Mode](command:usageLens.switchMode)"
+        "contents": "Click a usage count above any class, function or method, or a count in the Leaderboard, to list its usages here."
+      },
+      {
+        "view": "usageLens.exclusions",
+        "contents": "Open a folder to manage the paths Usage Lens leaves out of its counts."
       }
     ],
     "menus": {
@@ -156,6 +214,26 @@
         {
           "command": "usageLens.refreshUsages",
           "when": "usageLens.hasResult"
+        },
+        {
+          "command": "usageLens.useTextMode",
+          "when": "false"
+        },
+        {
+          "command": "usageLens.useLanguageServerMode",
+          "when": "false"
+        },
+        {
+          "command": "usageLens.leaderboard.stop",
+          "when": "false"
+        },
+        {
+          "command": "usageLens.openExclusionSettings",
+          "when": "false"
+        },
+        {
+          "command": "usageLens.showLenses",
+          "when": "false"
         }
       ],
       "explorer/context": [
@@ -180,6 +258,66 @@
           "command": "usageLens.refreshUsages",
           "when": "view == usageLens.usages && usageLens.hasResult",
           "group": "navigation@2"
+        },
+        {
+          "command": "usageLens.leaderboard.scan",
+          "when": "view == usageLens.leaderboard",
+          "group": "navigation@1"
+        },
+        {
+          "command": "usageLens.addExclusion",
+          "when": "view == usageLens.exclusions && workspaceFolderCount > 0",
+          "group": "navigation@1"
+        },
+        {
+          "command": "usageLens.openExclusionSettings",
+          "when": "view == usageLens.exclusions",
+          "group": "navigation@2"
+        },
+        {
+          "command": "usageLens.useLanguageServerMode",
+          "when": "view =~ /^usageLens\\.(leaderboard|usages|exclusions)$/",
+          "group": "1_mode@1",
+          "toggled": "config.usageLens.mode == languageServer"
+        },
+        {
+          "command": "usageLens.useTextMode",
+          "when": "view =~ /^usageLens\\.(leaderboard|usages|exclusions)$/",
+          "group": "1_mode@2",
+          "toggled": "config.usageLens.mode == text"
+        },
+        {
+          "command": "usageLens.showLenses",
+          "when": "view =~ /^usageLens\\.(leaderboard|usages|exclusions)$/",
+          "group": "2_lenses@1",
+          "toggled": "config.usageLens.enabled"
+        },
+        {
+          "command": "usageLens.refresh",
+          "when": "view =~ /^usageLens\\.(leaderboard|usages|exclusions)$/",
+          "group": "2_lenses@2"
+        },
+        {
+          "command": "usageLens.manageExclusions",
+          "when": "view =~ /^usageLens\\.(leaderboard|usages|exclusions)$/",
+          "group": "3_exclusions@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "usageLens.removeExclusion",
+          "when": "view == usageLens.exclusions && viewItem == usageLens.pattern",
+          "group": "inline"
+        },
+        {
+          "command": "usageLens.removeExclusion",
+          "when": "view == usageLens.exclusions && viewItem == usageLens.pattern",
+          "group": "1_edit"
+        },
+        {
+          "command": "usageLens.addExclusion",
+          "when": "view == usageLens.exclusions && viewItem == usageLens.exclusionGroup",
+          "group": "inline"
         }
       ]
     },
@@ -310,6 +448,17 @@
           "minimum": 1,
           "maximum": 32,
           "markdownDescription": "Maximum concurrent reference requests sent to the language server."
+        },
+        "usageLens.leaderboard.include": {
+          "type": "string",
+          "default": "**/*.{py,pyi,ts,tsx,js,jsx,mjs,cjs,go,java,kt,cs,php,rb,rs,c,h,cpp,hpp,swift,scala}",
+          "markdownDescription": "Glob of source files the Symbol Leaderboard scans. Exclusions still apply."
+        },
+        "usageLens.leaderboard.maxFiles": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 1,
+          "markdownDescription": "Maximum number of files the Symbol Leaderboard scans."
         }
       }
     }

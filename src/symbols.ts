@@ -10,6 +10,8 @@ export interface TargetSymbol {
   nameRange: vscode.Range;
   /** Full declaration range; the lens is placed on its first line. */
   range: vscode.Range;
+  /** Name of the enclosing symbol (e.g. the class of a method), if any. */
+  container?: string;
 }
 
 type SymbolResult = Array<vscode.DocumentSymbol | vscode.SymbolInformation> | undefined;
@@ -75,25 +77,29 @@ export function collectTargets(doc: vscode.TextDocument, symbols: SymbolResult, 
     return out;
   }
   const kinds = settings.current.symbolKinds;
-  const consider = (t: TargetSymbol | undefined) => {
+  const consider = (t: TargetSymbol | undefined, container: string | undefined) => {
     if (t && kinds.has(t.kind) && !settings.isIgnoredName(t.name)) {
+      if (container) {
+        t.container = container;
+      }
       out.push(t);
     }
   };
-  const walk = (list: vscode.DocumentSymbol[]) => {
+  const walk = (list: vscode.DocumentSymbol[], container: string | undefined) => {
     for (const s of list) {
-      consider(toTarget(doc, s.name, s.kind, s.range, s.selectionRange));
+      const t = toTarget(doc, s.name, s.kind, s.range, s.selectionRange);
+      consider(t, container);
       if (s.children?.length) {
-        walk(s.children);
+        walk(s.children, t?.name ?? (bareName(s.name) || container));
       }
     }
   };
   if (symbols.length && isDocumentSymbol(symbols[0])) {
-    walk(symbols as vscode.DocumentSymbol[]);
+    walk(symbols as vscode.DocumentSymbol[], undefined);
   } else {
     for (const s of symbols as vscode.SymbolInformation[]) {
       if (s.location.uri.toString() === doc.uri.toString()) {
-        consider(toTarget(doc, s.name, s.kind, s.location.range, undefined));
+        consider(toTarget(doc, s.name, s.kind, s.location.range, undefined), s.containerName ? bareName(s.containerName) || s.containerName : undefined);
       }
     }
   }

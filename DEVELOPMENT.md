@@ -24,7 +24,7 @@ npm install
    1 in file | 4 in project
    export function add(a: number, b: number): number {
    ```
-4. Click a count to open the **Usage Lens** sidebar (magnifier icon in the Activity Bar).
+4. Click a count to open the **Usage Lens** sidebar (magnifier icon in the Activity Bar). The sidebar has three views: **Leaderboard**, **Usages** and **Exclusions**.
 
 ### Things to try
 
@@ -32,15 +32,24 @@ npm install
 |---|---|
 | `unusedHelper` in `src/math.ts` | `0 in file \| 0 in project` |
 | `add` | `venv/lib.ts` is **not** counted (excluded by default) |
+| Open the **Leaderboard** view | `add` ranks first with 4 in project, and `unusedHelper` is at the bottom with `0 \| 0`. Nothing from `venv/` appears. |
+| Leaderboard: click **Method**, then type `calc` | Only `Calculator.compute` is left |
+| Leaderboard: **↓ Most used** → **↑ Least used** | The `0 \| 0` symbols move to the top |
+| Leaderboard: click a row / click a count | Opens the definition / fills the Usages view |
+| Edit `src/app.ts` while the Leaderboard is open | A stale banner offers **Rescan** |
+| **Exclusions** view → **+** → `src/legacy` | The pattern appears under *Usage Lens patterns*. Rescan, and `legacyThing` drops out of the Leaderboard. **×** removes it again. |
+| Any sidebar view → **⋯** → **Count by Text Match** | The checkmark moves, and the status bar shows `Text` |
 | Command Palette → **Usage Lens: Switch Counting Mode** → Text | `compute` goes from 1 to 2 in project (matches `templates/page.html`) |
 | Right-click `src/legacy` in the Explorer → **Exclude from Usage Counts** | `src/legacy/old.ts` loses its lenses; `.vscode/settings.json` gets `/src/legacy` |
-| Status bar item `LS` / `Text` (bottom right) | Click it to switch mode |
+| Status bar item `LS` / `Text` (bottom right) | Click it to toggle the mode |
 
 ### Editing code while it runs
 
 1. In the **main** window, start the watcher: `npm run watch` in a terminal, or press **Ctrl+Shift+B** (the default build task).
 2. Edit any file in `src/`. esbuild rebuilds in milliseconds.
 3. In the **development** window, run **Developer: Reload Window** (Ctrl+R) to load the new build.
+
+The Leaderboard is a webview. Its UI lives in `media/leaderboard.js` and `media/leaderboard.css`, which aren't bundled, so edits there only need **Developer: Reload Window**. To debug it, run **Developer: Open Webview Developer Tools** in the development window. Its filter and sort logic mirrors `src/leaderboardModel.ts`, which has the unit tests. Keep the two in sync.
 
 Breakpoints you set in `src/*.ts` in the main window work, because the dev build includes source maps. `console.log` output shows in the main window's **Debug Console**.
 
